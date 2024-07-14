@@ -1,0 +1,30 @@
+Source: comunix
+Section: utils
+Priority: optional
+Maintainer: Thomas Marsaleix <zoeurk@gmail.com>
+Build-Depends: debhelper-compat (= 12)
+Standards-Version: 4.4.1
+Homepage: http:/none
+
+Package: comunix-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends: comunix-lib (= ${binary:Version}), ${misc:Depends}
+Description: Headers of comunix
+
+Package: comunix-lib
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Library of comunix
+
+Package: comunix
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Create unix socket for send or receive messages
+
+Package: comunix-doc
+Architecture: any
+Depends: ${misc:Depends}
+Description: README of comunix

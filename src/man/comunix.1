@@ -1,0 +1,48 @@
+.\Manpage pour comunix.
+.\Contact zoeurk.gmail.com
+.TH man 1 "5 janvier 2024" "0.1" "comunix man page"
+.SH NAME
+comunix \- communiquer avec un socket unix
+.SH SYNOPSIS
+comunix OPTIONS
+.SH DESCRIPTION
+Outil pour communiquer
+.SH OPTIONS
+.TP
+.BR \-b , " \-\-buffer "\fIsize\fR
+Taille du \fIbuffer\fR.
+.TP
+.BR \-t , " \-\-time "\fImillisconds\fR
+poll timeout.
+.TP
+.BR \-u , " \-\-unix "\fIs|c:type[:OPTIONS]:/path/to/unix.socket\fR
+.SS	\fISocket configuration\fR
+.PP
+s|c: s for server, c for client
+.PP
+type: Type of socket
+.RS 5
+.PP
+- DGRAM: SOCK_DGRAM
+.PP
+- SEQPACKET: SOCK_SEQPACKET
+.PP
+- STREAM: SOCK_STREAM
+.RE
+.PP
+clients=n: n is the max clients allowed before grow up to 5 more (SEQPACKET and STREAM only)
+.PP
+backlog=n: socket backlog (SEQPACKET and STREAM only)
+.PP
+type=default|Dispacher|Echo: server operations (SEQPACKET and STREAM only)
+.PP
+file=-|file.(fifo|txt): file input
+.RS 5
+"-" is for default standard input
+.RE
+.TP
+.BR
+.SH BUGS
+Je sais pas
+.SH AUTHORS
+ZoeurK (zoeurk@gmail.com)
