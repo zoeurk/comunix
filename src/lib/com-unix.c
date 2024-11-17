@@ -1,9 +1,9 @@
 #include "com-unix.h"
-void *_memset(void *_d, const char c, const size_t size){
+void *_memset(void *_d, const char c, const unsigned long int size){
 	static int i;
 	static unsigned long int src, *ps;
 	char *s = _d;
-	size_t ___size___ = size%sizeof(unsigned long int),
+	unsigned long int ___size___ = size%sizeof(unsigned long int),
 		sz = size/sizeof(unsigned long int);
 	for(;___size___; ___size___--, *s = c, s++);
 	if(sz == 0)
@@ -14,11 +14,11 @@ void *_memset(void *_d, const char c, const size_t size){
 	for(;sz--; *ps = src, ps++);
 	return _d;
 }
-void *_memcpy(void *_dst, const void *_src, const size_t size){
+void *_memcpy(void *_dst, const void *_src, const unsigned long int size){
 	const char *d = _src;
-	const size_t *dd;
+	const unsigned long int *dd;
 	char *s = _dst;
-	size_t ___size___ = size%sizeof(unsigned long int),
+	unsigned long ___size___ = size%sizeof(unsigned long int),
 		sz = size/sizeof(unsigned long int),
 		*ds;
 	s += ___size___;
@@ -37,15 +37,15 @@ char *_strcpy(char *str1, const char *str2){
 	return s;
 	
 }
-size_t _strlen(const char *str){
+unsigned long int _strlen(const char *str){
 	const char *s;
 	for(s = str; *s != 0; s++);
 	return s - str;
 }
-size_t _strcmp(const char *str1, const char *str2){
+unsigned long int _strcmp(const char *str1, const char *str2){
         const char *d = str1, *s = str2;
-	const size_t *dd, *ds;
-	size_t	len1 = _strlen(str1),
+	const unsigned long int *dd, *ds;
+	unsigned long int len1 = _strlen(str1),
 		len2 = _strlen(str2),
 		___size___, sz;
 	if(len1 > len2)
@@ -89,15 +89,29 @@ int connecting(struct sockets *s){
 	return 0;
 }
 void Server_dgram(void *c, struct sockets *s){
-	if((COMUNIX(c)->szr = ((struct perform *)s->p)->on_sck_in(c, s)) > 0)
-	{
-		((struct perform *)s->p)->w_on_local(c, s);
-	}
+		if(COMUNIX(c)->r_pfds->fd == s->fd){
+			if((COMUNIX(c)->szr = STRLEN(COMUNIX(c)->buffer)) > 0 ||
+					(COMUNIX(c)->szr = ((struct perform *)s->p)->r_on_local(c, s)) > 0
+			){
+				((struct perform *)s->p)->on_sck_out(c, s);
+			}
+		}else{
+			if((COMUNIX(c)->szr = ((struct perform *)s->p)->on_sck_in(c, s)) > 0){
+				((struct perform *)s->p)->w_on_local(c, s);
+			}
+		}
 }
 void Client_dgram(void *c, struct sockets *s){
-	if((COMUNIX(c)->szr = STRLEN(COMUNIX(c)->buffer)) > 0 || (COMUNIX(c)->szr = ((struct perform *)s->p)->r_on_local(c, s)) > 0)
-	{
-		((struct perform *)s->p)->on_sck_out(c, s);
+	if(COMUNIX(c)->r_pfds->fd == s->fd){
+		if((COMUNIX(c)->szr = STRLEN(COMUNIX(c)->buffer)) > 0 ||
+			(COMUNIX(c)->szr = ((struct perform *)s->p)->r_on_local(c, s)) > 0
+		){
+			((struct perform *)s->p)->on_sck_out(c, s);
+		}
+	}else{
+		if((COMUNIX(c)->szr = ((struct perform *)s->p)->on_sck_in(c, s)) > 0){
+			((struct perform *)s->p)->w_on_local(c, s);
+		}
 	}
 }
 void Server_void(void *c, struct sockets *s){
@@ -110,18 +124,6 @@ void Server_void(void *c, struct sockets *s){
 		){
 			((struct perform *)s->p)->w_on_local(c, s);
 		}
-	/*for(fds = 0; fds < COMUNIX(c)->nfds; fds++){
-		if(COMUNIX(c)->pfds[fds].revents){
-			switch(fds){
-				case 0: ((struct perform *)COMUNIX(c)->s->p)->new_con(c, s);
-					break;
-				default: if((COMUNIX(c)->szr = ((struct perform *)COMUNIX(c)->s->p)->on_sck_in(c, s)) > 0){
-						((struct perform *)COMUNIX(c)->s->p)->w_on_local(c, s);
-					}
-				break;
-			}
-		}
-	}*/
 }
 void Server(void *c, struct sockets *s){
 	if(COMUNIX(c)->r_pfds->fd == s->fd_sck){
@@ -168,7 +170,7 @@ void destroy_comunix(struct comunix *c){
 	for(ds = c->s; ds != NULL; ds = pds){
 		if(ds->destroy_data)
 			(*ds->destroy_data)(ds->data);
-		if(ds->server){
+		if(ds->server && ((struct sockaddr_un *)ds->addr)->sun_family == AF_UNIX){
 			unlink(((struct sockaddr_un *)ds->addr)->sun_path);
 		}
 		if(ds->c){

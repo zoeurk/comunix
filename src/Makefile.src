@@ -3,7 +3,7 @@ AR=ar
 OPTIONS_LIB=-USTRING -USTDLIB -UDEBUG
 ERROR=-Werror
 OPT=-Wall -Wpadded -Wextra -Wimplicit-fallthrough=1 
-OPTIONS=$(OPT) -std=c90 -pedantic -g $(OPTIONS_LIB) $(SHOW_MSG)
+OPTIONS=$(OPT) -std=c89 -pedantic -g $(OPTIONS_LIB) $(SHOW_MSG)
 FILE=com-unix
 OUTFILE=comunix
 MAIN=./main

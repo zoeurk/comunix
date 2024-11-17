@@ -1,8 +1,8 @@
 .\Manpage pour comunix.
 .\Contact zoeurk.gmail.com
-.TH man 1 "5 janvier 2024" "0.1" "comunix man page"
+.TH man 1 "17 novembre 2024" "0.3" "comunix man page"
 .SH NAME
-comunix \- communiquer avec un socket unix
+comunix \- communiquer avec un socket
 .SH SYNOPSIS
 comunix OPTIONS
 .SH DESCRIPTION
@@ -15,7 +15,7 @@ Taille du \fIbuffer\fR.
 .BR \-t , " \-\-time "\fImillisconds\fR
 poll timeout.
 .TP
-.BR \-u , " \-\-unix "\fIs|c:type[:OPTIONS]:/path/to/unix.socket\fR
+.BR \-u , " \-\-unix "\fIs|c%type[%OPTIONS]%/path/to/unix.socket\fR
 .SS	\fISocket configuration\fR
 .PP
 s|c: s for server, c for client
@@ -40,6 +40,36 @@ file=-|file.(fifo|txt): file input
 .RS 5
 "-" is for default standard input
 .RE
+.TP
+.BR \-i, " \-\-ipv4 "\fIs|c%type[%OPTIONS]%address/port\fR
+.SS	\fISocket configuration\fR
+.PP
+s|c: s for server, c for client
+.PP
+type: Type of socket
+.RS 5
+.PP
+- DGRAM: SOCK_DGRAM
+.PP
+- STREAM: SOCK_STREAM
+.RE
+.PP
+clients=n: n is the max clients allowed before grow up to 5 more (STREAM only)
+.PP
+backlog=n: socket backlog (STREAM only)
+.PP
+type=default|Echo|Dispacher[STEAM only]: server operations
+.PP
+proto=0|TCP|UDP
+.PP
+file=-|file.(fifo|txt): file input
+.RS 5
+"-" is for default standard input
+.RE
+.TP
+.BR \-I, " \-\-ipv6 "\fIs|c%type[%OPTIONS]%address/port\fR
+.RS 5
+Same options than \fB\-\-ipv4\fR
 .TP
 .BR
 .SH BUGS

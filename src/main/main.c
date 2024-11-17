@@ -3,6 +3,8 @@ static void connection(struct comunix *c, struct sockets *s);
 static void onsend(struct comunix *c, struct sockets *s);
 static void writing(struct comunix *c, struct sockets *s);
 static ssize_t onrecv(struct comunix *c, struct sockets *s);
+/*Servers only*/
+static ssize_t dgramEcho(struct comunix *c, struct sockets *s);
 static void SendTo(struct comunix *c, struct sockets *s);
 static ssize_t RecvFrom(struct comunix *c, struct sockets *s);
 static ssize_t reading(struct comunix *c, struct sockets *s);
@@ -19,6 +21,12 @@ char *const type[] = {
 	"DGRAM",
 	"SEQPACKET",
 	"STREAM",
+	NULL
+};
+char *const proto[] = {
+	"0",
+	"TCP",
+	"UDP",
 	NULL
 };
 char *const servers_opt[] = {
@@ -70,7 +78,10 @@ char *str_split(char *str, char sep, char **r){
 	*r = NULL;
 	return ps;
 }
-
+/*char *strchar(char *str, char c){
+	for(;*str != c && *str;str++);
+	return str;
+}*/
 #include <signal.h>
 void end_of_socket(int signum){
 	const char *sig = NULL;
@@ -133,7 +144,7 @@ void close_file(void *data){
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
-const char *argp_program_version = "comunix 0.1~1";
+const char *argp_program_version = "comunix 0.3~1";
 const char *argp_program_bug_address = "<zoeurk@gmail.com>";
 static char doc[] = "Comunic through unix sockets";
 static char args_doc[] = "";
@@ -143,6 +154,8 @@ static struct argp_option options[] = {
 	{ "time", 't', "milliseconds", 0, "Set buffer size (default: 0)", 1 },
 	{ NULL, 0, NULL, 0, "Unix socket:", 2},
 	{ "unix", 'u', ":OPTIONS:path/unix/socket", 0, "Create unix socket (see man 1 comunix)", 3},
+	{ "ipv4", 'i', ":OPTIONS:address/port", 0, "Create ipv4 socket (see man 1 comunix)", 3},
+	{ "ipv6", 'I', ":OPTIONS:address/port", 0, "Create ipv6 socket (see man 1 comunix)", 3},
 	{ NULL, 0, NULL, 0, "Help", 4},
 	{ NULL, '?', NULL, 0, "Alias for --usage", 5},
 	{ NULL, 'h', NULL, 0, "Alias for --help", 5},
@@ -231,13 +244,13 @@ int stdin_set = -1;
 static error_t parse_opt(int key, char *arg, struct argp_state *state){
  static const struct comunix com_init = { NULL, NULL, NULL, 0, 0, 0, STDOUT_FILENO, 512, NULL };
  static const struct sockets s_init
-    = { NULL, sizeof(struct sockaddr_un), 0, 0, NULL, NULL, 0, 0, AF_UNIX, 0 , NULL, NULL, 0, 0, 0, 0, NULL, NULL, NULL };
+    = { NULL, sizeof(struct sockaddr_un), 0, 0, NULL, NULL, 0, 0, AF_UNIX, 0 , NULL, NULL, NULL, 0, 0, 0, 0, NULL, NULL, NULL };
  static const struct connect con_init = { 5, 10, 0, 0, 10, NULL};
  struct sockets *ps = NULL;
  struct stat st;
- char *ret, *save, *argument, *file;
- char *const opt[] = { "clients", "backlog", "type", "file" };
- int i, j;
+ char *ret, *save, *argument, *file, *c_addr, *c_port;
+ char *const opt[] = { "clients", "backlog", "type", "file", "proto", "socket" };
+ int i, j, port, ret_ntop;
  state->name = state->argv[0];
  if(c == NULL){
   if((c = malloc(sizeof(struct comunix))) == NULL){
@@ -263,7 +276,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state){
    c->time = toint(arg);
    break;
   case 'u':
-   for(i = 0; (ret = str_split(arg, ':', &save)); arg = NULL, i++){
+   for(i = 0; (ret = str_split(arg, '%', &save)); arg = NULL, i++){
     switch(i){
      case 0:
       if(ret[1] == 0)
@@ -366,6 +379,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state){
           ((struct perform *)ps->p)->on_sck_out = &SendTo;
           ((struct perform *)ps->p)->on_sck_in = &RecvFrom;
           ps->mainfn = &Server;
+          stdin_set = 0;
           break;
         }
         break;
@@ -381,17 +395,20 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state){
         if(STRCMP(ret, opt[j]) == 0){
          if(ps->type == SOCK_DGRAM){
           if(j != 3 && ps->server != 0)
-           warnx("Argument not valid for type 'DGRAM'");
+           warnx("Argument not valid for type 'DGRAM' (%s)", opt[j]);
           else{
            switch(j){
             case 3:
              FILES;
              break;
             default:
-             warnx("Argument not valid for type 'DGRAM'");
+             warnx("Argument not valid for type 'DGRAM' (%s)", opt[j]);
            }
           }
          }else{
+	  if(ps->server == 0 && j < 3){
+           warnx("Argument not valid for client (%s)", opt[j]);
+	  }
           switch(j){
            case 0:
             save = NULL;
@@ -445,10 +462,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state){
           c->nfds += (ps->c->climax) +2;
           break;
         }
-        if((ps->addr = malloc(sizeof(struct sockaddr_un))) == NULL){
+        ps->addrlen = sizeof(struct sockaddr_un);
+        if((ps->addr = malloc(ps->addrlen)) == NULL){
          err(255, "malloc()");
         }
-        ps->addrlen = sizeof(struct sockaddr_un);
         ((struct sockaddr_un *)ps->addr)->sun_family = AF_UNIX;
         STRCPY(((struct sockaddr_un *)ps->addr)->sun_path, ret);
        }else
@@ -460,6 +477,256 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state){
      break;
    }
    break;
+   #define INET_PTON(ip) \
+        ps->addrlen = sizeof(struct sockaddr_in); \
+        if((ps->addr = malloc(ps->addrlen)) == NULL){ \
+         err(255, "malloc()"); \
+        } \
+        ((struct sockaddr_in *)ps->addr)->sin_family = ip; \
+        ((struct sockaddr_in *)ps->addr)->sin_port = htons(port); \
+	ret_ntop = inet_pton(ip, c_addr, &((struct sockaddr_in *)ps->addr)->sin_addr);
+  #define INTERNET(ip) \
+   for(i = 0; (ret = str_split(arg, '%', &save)); arg = NULL, i++){ \
+    switch(i){ \
+     case 0: \
+      if(ret[1] == 0){ \
+       switch(*ret){ \
+        case 'c': \
+         CREATE_SOCKET; \
+         ps->server = 0; \
+         break; \
+        case 's': \
+         CREATE_SOCKET; \
+         ps->server = 1; \
+         break; \
+        default: \
+         errx(255, "invalid argument: '%s'", ret); \
+       } \
+       ps->domain = ip; \
+      }else \
+       errx(255, "invalid argument: '%s'", ret); \
+      break; \
+     case 1: \
+      switch(getsubopt(ret, type)){ \
+       case DGRAM: \
+        ps->type = SOCK_DGRAM; \
+        if((ps->p = malloc(sizeof(struct perform))) == NULL){ \
+         err(255, "malloc()"); \
+        } \
+        switch(ps->server){ \
+         case 0: \
+          ((struct perform *)ps->p)->init = &connecting; \
+          ((struct perform *)ps->p)->on_sck_in = &onrecv; \
+          ((struct perform *)ps->p)->on_sck_out = &onsend; \
+          ((struct perform *)ps->p)->r_on_local = &reading; \
+          ((struct perform *)ps->p)->w_on_local = &writing; \
+          ps->mainfn = &Client_dgram; \
+          break; \
+         case 1: \
+          ((struct perform *)ps->p)->init = &binding; \
+          ((struct perform *)ps->p)->on_sck_out = &onsend; \
+          ((struct perform *)ps->p)->on_sck_in = &onrecv;\
+          ((struct perform *)ps->p)->w_on_local = &writing; \
+          ((struct perform *)ps->p)->r_on_local = &reading; \
+          ps->mainfn = &Server_dgram; \
+          stdin_set = 0; \
+          break; \
+        } \
+        break; \
+       case STREAM: \
+        ps->type = SOCK_STREAM; \
+        if(ps->c == NULL){ \
+         if((ps->c = malloc(sizeof(struct connect))) == NULL){ \
+          err(255, "malloc()"); \
+         } \
+         MEMCPY(ps->c, &con_init, sizeof(struct connect)); \
+        } \
+        if((ps->p = malloc(sizeof(struct perform))) == NULL){ \
+         err(255, "malloc()"); \
+        } \
+        switch(ps->server){ \
+         case 0: \
+          ((struct perform *)ps->p)->init = &connecting; \
+          ((struct perform *)ps->p)->new_con = NULL; \
+          ((struct perform *)ps->p)->r_on_local = &reading; \
+          ((struct perform *)ps->p)->w_on_local = &SimpleOnRecvFrom; \
+          ((struct perform *)ps->p)->on_sck_out = &Client_SendTo; \
+          ((struct perform *)ps->p)->on_sck_in = &RecvFrom; \
+          ps->mainfn = &Client; \
+          break; \
+         case 1: \
+          ((struct perform *)ps->p)->init = &listening; \
+          ((struct perform *)ps->p)->new_con = &connection; \
+          ((struct perform *)ps->p)->r_on_local = &reading; \
+          ((struct perform *)ps->p)->w_on_local = &SimpleOnRecvFrom; \
+          ((struct perform *)ps->p)->on_sck_out = &SendTo; \
+          ((struct perform *)ps->p)->on_sck_in = &RecvFrom; \
+          ps->mainfn = &Server; \
+          stdin_set = 0; \
+          break; \
+        } \
+        break; \
+       default: \
+        errx(255, "invalid argument: '%s'", ret); \
+      } \
+      break; \
+     default: \
+      if((argument = _strchr(ret, '='))){ \
+       *argument = 0; \
+       argument++; \
+       for(j = 0; j < 5; j++){ \
+        if(STRCMP(ret, opt[j]) == 0){ \
+         if(ps->server == 0 && j < 3){ \
+          warnx("Argument not valid for client (%s)", opt[j]); \
+	  break; \
+	 } \
+         if(ps->type == SOCK_DGRAM){ \
+           switch(j){ \
+	    case 2: \
+	     switch(getsubopt(argument, servers_opt)){ \
+	      case 0: /*default*/\
+	       break; \
+	      case 1:\
+               ((struct perform *)ps->p)->on_sck_in = &dgramEcho; \
+	       break; \
+	      case 2:\
+               warnx("Argument not valid for type 'DGRAM' (%s)", opt[j]); \
+	       break; \
+	      default: \
+	       errx(255, "Unknow argument for '%s' for type", argument); \
+	      break; \
+	     } \
+	     break; \
+            case 3: \
+             FILES; \
+             break; \
+            case 4: \
+             switch(getsubopt(argument, proto)){ \
+              case ZERO: \
+               ps->protocol = 0; \
+               break; \
+              /*case TCP: \
+               ps->protocol = IPPROTO_TCP; \
+               break; */ \
+              case UDP: \
+               ps->protocol = IPPROTO_UDP; \
+               break; \
+              default: \
+               errx(255, "Value invalid: '%s'", argument); \
+             } \
+             break; \
+            default: \
+             warnx("Argument not valid for type 'DGRAM' (%s)", opt[j]); \
+          } \
+         }else{ \
+          switch(j){ \
+           case 0: \
+            save = NULL; \
+            ps->c->climax = strtoul(argument, &save, 0); \
+            if(*save != 0){ \
+             errx(255, "value invalid: '%s'", \
+                argument); \
+            } \
+            break; \
+           case 1: \
+            ps->c->backlog = toint(argument); \
+            break; \
+           case 2: /*type*/ \
+	    switch(getsubopt(argument, servers_opt)){ \
+	     case 0: \
+               ((struct perform *)ps->p)->w_on_local = &SimpleOnRecvFrom; \
+	      break; \
+	     case 1: \
+               ((struct perform *)ps->p)->w_on_local = &EchoOnRecvFrom; \
+	      break; \
+	     case 2: \
+               ((struct perform *)ps->p)->w_on_local = &DispachOnRecvFrom; \
+	      break; \
+	     default: \
+	      errx(255, "Unknow argument for '%s' for type", argument); \
+	    } \
+            break; \
+           case 3: /*FILE*/ \
+            FILES; \
+            break; \
+           case 4: \
+            switch(getsubopt(argument, proto)){ \
+             case ZERO: \
+              ps->protocol = 0; \
+              break; \
+             case TCP: \
+              ps->protocol = IPPROTO_TCP; \
+              break; \
+             /*case UDP: \
+              ps->protocol = IPPROTO_UDP; \
+              break;*/ \
+             default: \
+              errx(255, "Value invalid: '%s'", argument); \
+            } \
+            break; \
+          } \
+          break; \
+         } \
+        } \
+        if(j == 5){ \
+         errx(255, "invalid argument '%s'", ret); \
+        } \
+       }\
+      }else{ \
+       if(save == NULL){ \
+	c_addr = ret; \
+	c_port = _strchr(c_addr, '/'); \
+	if(!c_port){ \
+			errx(255, "No port given."); \
+	}else{ \
+		*c_port = 0; \
+		c_port++; \
+		if(!*c_port){ \
+			errx(255, "No port given."); \
+		} \
+	} \
+	port = toint(c_port); \
+	INET_PTON(ip); \
+	switch(ret_ntop){ \
+	 case -1: \
+	  err(255, "inet_pton()"); \
+	 case 0: \
+	  errx(255,"inet_pton() Not in presentation format"); \
+	} \
+	switch(ps->type){ \
+         case SOCK_DGRAM: \
+          c->nfds++; \
+          break; \
+         default: \
+          if((ps->c->clifd = \
+           calloc(ps->c->climax+2, sizeof(int *))) == NULL \
+          ){ \
+           err(255, "calloc()"); \
+          } \
+          c->nfds += (ps->c->climax) +2; \
+        } \
+       }else \
+        errx(255, "invalid arguments, try %s --help", state->name); \
+      } \
+      break; \
+    } \
+    if(save == NULL) \
+     break; \
+   } \
+   break;
+  case 'i':
+   INTERNET(AF_INET);
+  case 'I':
+   #undef INET_PTON
+   #define INET_PTON(ip) \
+        ps->addrlen = sizeof(struct sockaddr_in6); \
+        if((ps->addr = calloc(1, ps->addrlen)) == NULL){ \
+         err(255, "malloc()"); \
+        } \
+        ((struct sockaddr_in6 *)ps->addr)->sin6_family = ip; \
+        ((struct sockaddr_in6 *)ps->addr)->sin6_port = htons(port); \
+	ret_ntop = inet_pton(ip, c_addr, &((struct sockaddr_in6 *)ps->addr)->sin6_addr);
+   INTERNET(AF_INET6);
   case ARGP_KEY_END:
    break;
   default:
@@ -533,21 +800,34 @@ int main(int argc, char **argv){
 		if(s->server == 1)
 			server = 1;
 		if(s->type == SOCK_DGRAM){
-			if(s->server == 1){
-				s->fd = STDOUT_FILENO;
-				c->r_pfds->fd = s->fd_sck;
-				c->r_pfds->events = POLLIN;
-			}else{
-				if(s->fd == STDIN_FILENO){
-					s->fd = STDIN_FILENO;
-					c->nfds--;
-					inc = 1;
-				}else{
-					c->r_pfds->fd = s->fd;
+			switch(s->domain){
+				case AF_UNIX:
+					if(s->server == 1){
+						s->fd = STDOUT_FILENO;
+						c->r_pfds->fd = s->fd_sck;
+						c->r_pfds->events = POLLIN;
+					}else{
+						if(s->fd == STDIN_FILENO){
+							s->fd = STDIN_FILENO;
+							c->nfds--;
+							inc = 1;
+						}else{
+							c->r_pfds->fd = s->fd;
+							c->r_pfds->events = POLLIN;
+						}
+					}
+					break;
+				default:
+					c->r_pfds->fd = s->fd_sck;
 					c->r_pfds->events = POLLIN;
-				}
+					if(s->fd != STDIN_FILENO){
+						c->r_pfds++;
+						c->r_pfds->fd = s->fd;
+						c->r_pfds->events = POLLIN;
+					}
 			}
-		}else{	c->r_pfds->fd = s->fd_sck;
+		}else{
+			c->r_pfds->fd = s->fd_sck;
 			c->r_pfds->events = POLLIN;
 			if(s->fd != STDIN_FILENO){
 				c->r_pfds++;
@@ -634,7 +914,6 @@ void onsend(struct comunix *c, struct sockets *s){
 	}
 }
 void writing(struct comunix *c, struct sockets *s){
-	printf("Writing from: %i\n", s->fd_sck);
 	if(write(c->output,COMUNIX(c)->buffer, c->szr) < 0){
 		err(255, "write()");
 	}
@@ -644,6 +923,14 @@ ssize_t onrecv(struct comunix *c, struct sockets *s){
 	if(c->szr < 0){
 		err(255, "recvfrom()");
 	}
+	return c->szr;
+}
+ssize_t dgramEcho(struct comunix *c, struct sockets *s){
+	c->szr = recvfrom(s->fd_sck, c->buffer, c->buflen, s->r_flags, (struct sockaddr *)s->addr, (socklen_t *)&s->addrlen);
+	if(c->szr < 0){
+		err(255, "recvfrom()");
+	}
+	onsend(c, s);
 	return c->szr;
 }
 ssize_t reading(struct comunix *c, struct sockets *s){

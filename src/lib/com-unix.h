@@ -3,6 +3,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
 
 #include <poll.h>
 
@@ -25,11 +30,11 @@
 #endif
 
 #ifndef STRING
-	void *_memset(void *_d, const char c, const size_t size);
-	void *_memcpy(void *_dst, const void *_src, const size_t size);
+	void *_memset(void *_d, const char c, const unsigned long int size);
+	void *_memcpy(void *_dst, const void *_src, const unsigned long int size);
 	char *_strcpy(char *str1, const char *str2);
-	size_t _strcmp(const char *str1, const char *str2);
-	size_t _strlen(const char *str);
+	unsigned long int _strcmp(const char *str1, const char *str2);
+	unsigned long int _strlen(const char *str);
 	#define MEMSET _memset
 	#define MEMCPY _memcpy
 	#define STRCPY _strcpy
@@ -49,6 +54,11 @@ enum TYPE{
 	SEQPACKET,
 	STREAM
 };
+enum PROTOCOLS{
+	ZERO,
+	TCP,
+	UDP
+};
 struct accept{
 	char *id;
 	int fd;
@@ -63,6 +73,10 @@ struct connect{
 	size_t climax;
 	int **clifd;
 };
+/*struct socket_opt{
+	void *opt;
+	struct socket_opt *next;
+};*/
 struct sockets{
 	void *addr;
 	size_t addrlen;
@@ -74,6 +88,7 @@ struct sockets{
 	int fd;
 	int domain;	/*AF_UNIX*/
 	int type;	/*DGRAM, SEQPACKET, STREAM*/
+	/*struct socket_opt *opt;*/
 	struct connect *c;
 	struct accept *a;
 	int default_policy;
