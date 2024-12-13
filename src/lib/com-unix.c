@@ -53,7 +53,7 @@ unsigned long int _strcmp(const char *str1, const char *str2){
 	if(len1 < len2)
 		return -1;
 	___size___ = len1%sizeof(unsigned long int), sz = len1/sizeof(unsigned long int);
-	for(;--___size___ && *d == *s; d++,s++);
+	for(;___size___ && *d == *s; ___size___--, d++,s++);
 	if(sz == 0){
         	return *d - *s;
 	}
