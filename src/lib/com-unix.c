@@ -42,7 +42,7 @@ unsigned long int _strlen(const char *str){
 	for(s = str; *s != 0; s++);
 	return s - str;
 }
-unsigned long int _strcmp(const char *str1, const char *str2){
+int _strcmp(const char *str1, const char *str2){
         const char *d = str1, *s = str2;
 	const unsigned long int *dd, *ds;
 	unsigned long int len1 = _strlen(str1),
@@ -55,12 +55,20 @@ unsigned long int _strcmp(const char *str1, const char *str2){
 	___size___ = len1%sizeof(unsigned long int), sz = len1/sizeof(unsigned long int);
 	for(;___size___ && *d == *s; ___size___--, d++,s++);
 	if(sz == 0){
-        	return *d - *s;
+		if(*d > *s)
+			return 1;
+		if(*d < *s)
+			return -1;
+		return 0;
 	}
 	dd = (unsigned long int *)d;
 	ds = (unsigned long int *)s;
 	for(;--sz && *ds == *dd;ds++, dd++);
-	return *dd - *ds;
+	if(*dd > *ds)
+		return 1;
+	if(*dd < *ds)
+		return -1;
+	return 0;
 }
 int binding(struct sockets *s){
 	if(bind(s->fd_sck, (struct sockaddr *)s->addr, (socklen_t)s->addrlen) < 0){

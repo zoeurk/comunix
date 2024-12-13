@@ -33,7 +33,7 @@
 	void *_memset(void *_d, const char c, const unsigned long int size);
 	void *_memcpy(void *_dst, const void *_src, const unsigned long int size);
 	char *_strcpy(char *str1, const char *str2);
-	unsigned long int _strcmp(const char *str1, const char *str2);
+	int _strcmp(const char *str1, const char *str2);
 	unsigned long int _strlen(const char *str);
 	#define MEMSET _memset
 	#define MEMCPY _memcpy
