@@ -2,30 +2,31 @@ GCC=gcc
 AR=ar
 OPTIONS_LIB=-USTRING -USTDLIB -UDEBUG
 ERROR=-Werror
-OPT=-Wall -Wpadded -Wextra -Wimplicit-fallthrough=1 
-OPTIONS=$(OPT) -std=c89 -pedantic -g $(OPTIONS_LIB) $(SHOW_MSG)
+OPT=-Wall -Wpadded -Wextra -Wimplicit-fallthrough=1
+OPTIONS=$(OPT) -std=c89 -D_POSIX_C_SOURCE=200112L -pedantic -g $(OPTIONS_LIB) $(SHOW_MSG)
 FILE=com-unix
 OUTFILE=comunix
 MAIN=./main
-all: all-shared all-static
+#all: all-shared all-static
+all: all-shared
 
 all-shared: object shared
 	$(GCC) $(MAIN)/main.o -o $(OUTFILE) $(OPTIONS) -L./lib -l$(OUTFILE)
 
-all-static: object static
-	$(GCC) -static $(MAIN)/main.o -o $(OUTFILE)-static $(OPTIONS) -L./lib -l$(OUTFILE)
+#all-static: object static
+#	$(GCC) -static $(MAIN)/main.o -o $(OUTFILE)-static $(OPTIONS) -L./lib -l$(OUTFILE)
 
 object:
 	$(GCC) -c $(MAIN)/main.c -o $(MAIN)/main.o $(OPTIONS)
 
-static: static-lib
-	$(AR) rcs ./lib/lib$(OUTFILE).a ./lib/$(OUTFILE)_static.o
+#static: static-lib
+#	$(AR) rcs ./lib/lib$(OUTFILE).a ./lib/$(OUTFILE)_static.o
 
 shared: shared-lib
 	$(GCC) -shared ./lib/$(OUTFILE)_shared.o -o ./lib/lib$(OUTFILE).so $(OPTIONS)
 
-static-lib:
-	$(GCC) -c ./lib/$(FILE).c -o ./lib/$(OUTFILE)_static.o $(OPTIONS)
+#static-lib:
+#	$(GCC) -c ./lib/$(FILE).c -o ./lib/$(OUTFILE)_static.o $(OPTIONS)
 
 shared-lib:
 	$(GCC) -c -fPIC ./lib/$(FILE).c -o ./lib/$(OUTFILE)_shared.o $(OPTIONS)
@@ -35,5 +36,5 @@ clean:
 
 cleanall:
 	[ -e lib/lib$(OUTFILE).so ] && rm lib/lib$(OUTFILE).so
-	[ -e lib/lib$(OUTFILE).a ] && rm lib/lib$(OUTFILE).a
+	#[ -e lib/lib$(OUTFILE).a ] && rm lib/lib$(OUTFILE).a
 	rm lib/*.o $(MAIN)/main.o $(OUTFILE)*

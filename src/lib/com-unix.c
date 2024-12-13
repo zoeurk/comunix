@@ -53,8 +53,36 @@ int _strcmp(const char *str1, const char *str2){
 	if(len1 < len2)
 		return -1;
 	___size___ = len1%sizeof(unsigned long int), sz = len1/sizeof(unsigned long int);
-	for(;___size___ && *d == *s; ___size___--, d++,s++);
+	for(;--___size___ && *d == *s; d++,s++);
 	if(sz == 0){
+		if(*d > *s)
+			return 1;
+		if(*d < *s)
+			return -1;
+		return 0;
+	}
+	dd = (unsigned long int *)d;
+	ds = (unsigned long int *)s;
+	for(;--sz && *ds == *dd;ds++, dd++);
+	if(*dd > *ds)
+		return 1;
+	if(*dd < *ds)
+		return -1;
+	return 0;
+}
+int _strncmp(const char *str1, const char *str2, unsigned long int size){
+        const char *d = str1, *s = str2;
+	const unsigned long int *dd, *ds;
+	unsigned long int ___size___, sz;
+	/*if(len1 > len2)
+		return 1;
+	if(len1 < len2)
+		return -1;*/
+	/*___size___ = len1%sizeof(unsigned long int), sz = len1/sizeof(unsigned long int);*/
+	___size___ = size%sizeof(unsigned long int), sz = size/sizeof(unsigned long int);
+	for(;--___size___ && *d == *s; d++,s++);
+	if(sz == 0){
+        	return *d - *s;
 		if(*d > *s)
 			return 1;
 		if(*d < *s)

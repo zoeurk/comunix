@@ -34,17 +34,20 @@
 	void *_memcpy(void *_dst, const void *_src, const unsigned long int size);
 	char *_strcpy(char *str1, const char *str2);
 	int _strcmp(const char *str1, const char *str2);
+	int _strncmp(const char *str1, const char *str2, unsigned long int size);
 	unsigned long int _strlen(const char *str);
 	#define MEMSET _memset
 	#define MEMCPY _memcpy
 	#define STRCPY _strcpy
 	#define STRCMP _strcmp
+	#define STRNCMP _strncmp
 	#define STRLEN _strlen
 #else
 	#include <string.h>
 	#define MEMSET memset
 	#define MEMCPY memcpy
 	#define STRCPY strcpy
+	#define STRNCMP strncmp
 	#define STRCMP strcmp
 	#define STRLEN strlen
 #endif
@@ -73,10 +76,10 @@ struct connect{
 	size_t climax;
 	int **clifd;
 };
-/*struct socket_opt{
-	void *opt;
+struct socket_opt{
+	int opt;
 	struct socket_opt *next;
-};*/
+};
 struct sockets{
 	void *addr;
 	size_t addrlen;
@@ -88,7 +91,7 @@ struct sockets{
 	int fd;
 	int domain;	/*AF_UNIX*/
 	int type;	/*DGRAM, SEQPACKET, STREAM*/
-	/*struct socket_opt *opt;*/
+	struct socket_opt *opt;
 	struct connect *c;
 	struct accept *a;
 	int default_policy;
