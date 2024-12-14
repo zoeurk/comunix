@@ -43,32 +43,8 @@ unsigned long int _strlen(const char *str){
 	return s - str;
 }
 int _strcmp(const char *str1, const char *str2){
-        const char *d = str1, *s = str2;
-	const unsigned long int *dd, *ds;
-	unsigned long int len1 = _strlen(str1),
-		len2 = _strlen(str2),
-		___size___, sz;
-	if(len1 > len2)
-		return 1;
-	if(len1 < len2)
-		return -1;
-	___size___ = len1%sizeof(unsigned long int), sz = len1/sizeof(unsigned long int);
-	for(;--___size___ && *d == *s; d++,s++);
-	if(sz == 0){
-		if(*d > *s)
-			return 1;
-		if(*d < *s)
-			return -1;
-		return 0;
-	}
-	dd = (unsigned long int *)d;
-	ds = (unsigned long int *)s;
-	for(;--sz && *ds == *dd;ds++, dd++);
-	if(*dd > *ds)
-		return 1;
-	if(*dd < *ds)
-		return -1;
-	return 0;
+	for(;*str1 != 0 && *str2 != 0 && *str1 == *str2;str1++, str2++);
+	return *str1 - *str2;
 }
 int _strncmp(const char *str1, const char *str2, unsigned long int size){
         const char *d = str1, *s = str2;
@@ -83,20 +59,13 @@ int _strncmp(const char *str1, const char *str2, unsigned long int size){
 	for(;--___size___ && *d == *s; d++,s++);
 	if(sz == 0){
         	return *d - *s;
-		if(*d > *s)
-			return 1;
-		if(*d < *s)
-			return -1;
-		return 0;
 	}
-	dd = (unsigned long int *)d;
-	ds = (unsigned long int *)s;
-	for(;--sz && *ds == *dd;ds++, dd++);
-	if(*dd > *ds)
-		return 1;
-	if(*dd < *ds)
-		return -1;
-	return 0;
+	for(ds = (unsigned long int *)s ,dd = (unsigned long int *)d;*ds == *dd && --sz;ds++, dd++);
+	if(!sz)
+		return 0;
+	;
+	for(sz *= sizeof(unsigned long int), s = (const char *)ds ,d = (const char *)dd;*s == *d && --sz;d++,s++);
+	return *d - *s;
 }
 int binding(struct sockets *s){
 	if(bind(s->fd_sck, (struct sockaddr *)s->addr, (socklen_t)s->addrlen) < 0){
