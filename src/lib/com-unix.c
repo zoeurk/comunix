@@ -50,20 +50,14 @@ int _strncmp(const char *str1, const char *str2, unsigned long int size){
         const char *d = str1, *s = str2;
 	const unsigned long int *dd, *ds;
 	unsigned long int ___size___, sz;
-	/*if(len1 > len2)
-		return 1;
-	if(len1 < len2)
-		return -1;*/
-	/*___size___ = len1%sizeof(unsigned long int), sz = len1/sizeof(unsigned long int);*/
 	___size___ = size%sizeof(unsigned long int), sz = size/sizeof(unsigned long int);
-	for(;--___size___ && *d == *s; d++,s++);
+	for(;*d == *s && --___size___; d++,s++);
 	if(sz == 0){
         	return *d - *s;
 	}
 	for(ds = (unsigned long int *)s ,dd = (unsigned long int *)d;*ds == *dd && --sz;ds++, dd++);
 	if(!sz)
 		return 0;
-	;
 	for(sz *= sizeof(unsigned long int), s = (const char *)ds ,d = (const char *)dd;*s == *d && --sz;d++,s++);
 	return *d - *s;
 }
